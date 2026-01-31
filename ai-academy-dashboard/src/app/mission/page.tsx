@@ -113,7 +113,6 @@ export default async function MissionPage() {
       <MissionHub
         missionDays={missionDays}
         taskForces={taskForces}
-        pilotClients={pilotClients}
         intelDrops={intelDrops}
         currentProgramDay={currentProgramDay}
         participant={participant}

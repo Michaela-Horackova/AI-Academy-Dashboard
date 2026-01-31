@@ -1,12 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   MissionDay,
   Assignment,
@@ -24,7 +28,18 @@ import {
   Clock,
   Target,
   ArrowLeft,
+  Loader2,
+  AlertCircle,
+  User,
 } from 'lucide-react';
+
+// Content fetched from Git/API
+interface DayContent {
+  situation: string | null;
+  resources: string | null;
+  mentorNotes: string | null;
+  source: 'local' | 'github' | 'database';
+}
 
 interface DayBriefingProps {
   missionDay: MissionDay;
@@ -33,6 +48,14 @@ interface DayBriefingProps {
   nextDay: { day: number; title: string } | null;
   allDays: Pick<MissionDay, 'day' | 'title' | 'codename' | 'act' | 'week'>[];
   currentProgramDay: number;
+  userRole?: string;
+}
+
+// Role-specific content
+interface RoleContent {
+  content: string | null;
+  source: 'local' | 'github' | 'fallback';
+  hasFallback: boolean;
 }
 
 export function DayBriefing({
@@ -42,11 +65,91 @@ export function DayBriefing({
   nextDay,
   allDays,
   currentProgramDay,
+  userRole,
 }: DayBriefingProps) {
   const [showTimeline, setShowTimeline] = useState(false);
+  const [content, setContent] = useState<DayContent | null>(null);
+  const [roleContent, setRoleContent] = useState<RoleContent | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingRole, setIsLoadingRole] = useState(false);
+  const [contentError, setContentError] = useState<string | null>(null);
 
   const isCurrentDay = missionDay.day === currentProgramDay;
   const isPastDay = missionDay.day < currentProgramDay;
+
+  // Fetch content from API
+  useEffect(() => {
+    async function fetchContent() {
+      setIsLoading(true);
+      setContentError(null);
+
+      try {
+        const response = await fetch(`/api/content/day/${missionDay.day}`);
+        if (response.ok) {
+          const data = await response.json();
+          setContent({
+            situation: data.situation,
+            resources: data.resources,
+            mentorNotes: data.mentorNotes,
+            source: data.source,
+          });
+        } else {
+          // Use database content as fallback
+          setContent({
+            situation: missionDay.briefing_content,
+            resources: missionDay.resources_content,
+            mentorNotes: null,
+            source: 'database',
+          });
+        }
+      } catch {
+        // Use database content as fallback
+        setContent({
+          situation: missionDay.briefing_content,
+          resources: missionDay.resources_content,
+          mentorNotes: null,
+          source: 'database',
+        });
+        setContentError('Using cached content');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchContent();
+  }, [missionDay.day, missionDay.briefing_content, missionDay.resources_content]);
+
+  // Fetch role-specific content
+  useEffect(() => {
+    async function fetchRoleContent() {
+      if (!userRole) return;
+
+      setIsLoadingRole(true);
+      try {
+        const response = await fetch(`/api/content/role/${userRole}/day/${missionDay.day}`);
+        if (response.ok) {
+          const data = await response.json();
+          // Only set if not fallback (meaning actual role-specific content exists)
+          if (!data.hasFallback) {
+            setRoleContent({
+              content: data.content,
+              source: data.source,
+              hasFallback: data.hasFallback,
+            });
+          } else {
+            setRoleContent(null);
+          }
+        }
+      } catch {
+        // No role-specific content available
+        setRoleContent(null);
+      } finally {
+        setIsLoadingRole(false);
+      }
+    }
+
+    fetchRoleContent();
+  }, [missionDay.day, userRole]);
 
   // Group days by act for timeline
   const daysByAct = allDays.reduce((acc, day) => {
@@ -170,6 +273,13 @@ export function DayBriefing({
                 <FileText className="h-4 w-4" />
                 Briefing
               </TabsTrigger>
+              {(roleContent || isLoadingRole) && userRole && (
+                <TabsTrigger value="role-specific" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  {userRole}
+                  {isLoadingRole && <Loader2 className="h-3 w-3 animate-spin" />}
+                </TabsTrigger>
+              )}
               <TabsTrigger value="deliverables" className="flex items-center gap-2">
                 <Target className="h-4 w-4" />
                 Deliverables
@@ -181,11 +291,34 @@ export function DayBriefing({
             </TabsList>
 
             <TabsContent value="briefing" className="space-y-4">
-              {missionDay.briefing_content ? (
-                <div
-                  className="prose prose-sm dark:prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: missionDay.briefing_content }}
-                />
+              {isLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-5/6" />
+                  <Skeleton className="h-32 w-full" />
+                  <Skeleton className="h-4 w-2/3" />
+                </div>
+              ) : content?.situation ? (
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  {contentError && (
+                    <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+                      <AlertCircle className="h-4 w-4" />
+                      {contentError}
+                    </div>
+                  )}
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeHighlight]}
+                  >
+                    {content.situation}
+                  </ReactMarkdown>
+                  {content.source !== 'database' && (
+                    <div className="mt-4 text-xs text-muted-foreground">
+                      Content loaded from {content.source}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <Card className="bg-muted/30">
                   <CardContent className="pt-6">
@@ -207,6 +340,48 @@ export function DayBriefing({
                 </Card>
               )}
             </TabsContent>
+
+            {/* Role-Specific Content */}
+            {userRole && (
+              <TabsContent value="role-specific" className="space-y-4">
+                {isLoadingRole ? (
+                  <div className="space-y-4">
+                    <Skeleton className="h-4 w-1/2" />
+                    <Skeleton className="h-4 w-full" />
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-24 w-full" />
+                  </div>
+                ) : roleContent?.content ? (
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                      <div className="flex items-center gap-2 text-sm font-medium text-blue-600 dark:text-blue-400">
+                        <User className="h-4 w-4" />
+                        Content tailored for {userRole} role
+                      </div>
+                    </div>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      rehypePlugins={[rehypeHighlight]}
+                    >
+                      {roleContent.content}
+                    </ReactMarkdown>
+                  </div>
+                ) : (
+                  <Card className="bg-muted/30">
+                    <CardContent className="pt-6">
+                      <div className="text-center space-y-2">
+                        <User className="h-12 w-12 mx-auto text-muted-foreground" />
+                        <h3 className="font-semibold">No Role-Specific Content</h3>
+                        <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                          There is no specialized content for the {userRole} role on Day {missionDay.day}.
+                          The common briefing content applies to all roles.
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+            )}
 
             <TabsContent value="deliverables" className="space-y-4">
               {assignments.length > 0 ? (
@@ -271,11 +446,22 @@ export function DayBriefing({
             </TabsContent>
 
             <TabsContent value="resources" className="space-y-4">
-              {missionDay.resources_content ? (
-                <div
-                  className="prose prose-sm dark:prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: missionDay.resources_content }}
-                />
+              {isLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-4 w-1/2" />
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-24 w-full" />
+                </div>
+              ) : content?.resources ? (
+                <div className="prose prose-sm dark:prose-invert max-w-none">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeHighlight]}
+                  >
+                    {content.resources}
+                  </ReactMarkdown>
+                </div>
               ) : (
                 <Card className="bg-muted/30">
                   <CardContent className="pt-6">

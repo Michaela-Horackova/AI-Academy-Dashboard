@@ -24,6 +24,7 @@ export interface Participant {
   repo_url: string | null;
   status: UserStatus;
   is_admin: boolean;
+  email_notifications: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -316,6 +317,7 @@ export interface IntelDrop {
   affected_task_forces: string[] | null;
   is_released: boolean;
   released_at: string | null;
+  notification_sent: boolean;
   created_at: string;
 }
 

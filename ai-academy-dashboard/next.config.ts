@@ -7,6 +7,66 @@ const withPWA = withPWAInit({
   skipWaiting: true,
   disable: process.env.NODE_ENV === "development",
   runtimeCaching: [
+    // Briefing content - cache for offline access
+    {
+      urlPattern: /\/api\/content\/day\/\d+/i,
+      handler: "StaleWhileRevalidate",
+      options: {
+        cacheName: "briefing-content",
+        expiration: {
+          maxEntries: 30,
+          maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+      },
+    },
+    // Role-specific content
+    {
+      urlPattern: /\/api\/content\/role\/[^/]+\/day\/\d+/i,
+      handler: "StaleWhileRevalidate",
+      options: {
+        cacheName: "role-content",
+        expiration: {
+          maxEntries: 50,
+          maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+        },
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+      },
+    },
+    // Mission day pages - network first with cache fallback
+    {
+      urlPattern: /\/mission\/day\/\d+/i,
+      handler: "NetworkFirst",
+      options: {
+        cacheName: "mission-pages",
+        expiration: {
+          maxEntries: 30,
+          maxAgeSeconds: 60 * 60 * 24, // 1 day
+        },
+        networkTimeoutSeconds: 5,
+        cacheableResponse: {
+          statuses: [0, 200],
+        },
+      },
+    },
+    // Intel drops for offline viewing
+    {
+      urlPattern: /\/intel/i,
+      handler: "NetworkFirst",
+      options: {
+        cacheName: "intel-cache",
+        expiration: {
+          maxEntries: 20,
+          maxAgeSeconds: 60 * 60, // 1 hour
+        },
+        networkTimeoutSeconds: 5,
+      },
+    },
+    // Supabase API calls
     {
       urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
       handler: "NetworkFirst",

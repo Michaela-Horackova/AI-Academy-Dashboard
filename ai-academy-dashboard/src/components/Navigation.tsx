@@ -43,6 +43,7 @@ import {
   Radio,
 } from 'lucide-react';
 import { CommandPalette } from '@/components/CommandPalette';
+import { IntelDropNotification, useUnreadIntelCount, IntelBadge } from '@/components/IntelDropNotification';
 
 interface NavItem {
   href: string;
@@ -72,6 +73,7 @@ export function Navigation() {
   const pathname = usePathname();
   const { user, participant, isLoading, isAdmin, userStatus, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const unreadIntelCount = useUnreadIntelCount();
 
   const closeMobileMenu = () => setMobileMenuOpen(false);
 
@@ -118,6 +120,7 @@ export function Navigation() {
             {filteredNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = pathname === item.href;
+              const showIntelBadge = item.href === '/intel' && unreadIntelCount > 0;
 
               return (
                 <Link
@@ -133,6 +136,7 @@ export function Navigation() {
                 >
                   <Icon className="h-4 w-4" />
                   <span className="hidden xl:inline">{item.label}</span>
+                  {showIntelBadge && <IntelBadge count={unreadIntelCount} />}
                 </Link>
               );
             })}
@@ -405,6 +409,9 @@ export function Navigation() {
           </div>
         </div>
       </div>
+
+      {/* Intel Drop Notification Listener */}
+      {user && <IntelDropNotification />}
     </nav>
   );
 }

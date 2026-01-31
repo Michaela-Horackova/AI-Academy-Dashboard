@@ -56,6 +56,19 @@ export default async function MissionDayPage({ params }: PageProps) {
     }
   }
 
+  // Get current user for role-specific content
+  const { data: { user } } = await supabase.auth.getUser();
+  let userRole: string | undefined;
+
+  if (user) {
+    const { data: participant } = await supabase
+      .from('participants')
+      .select('role')
+      .eq('email', user.email)
+      .single();
+    userRole = participant?.role ?? undefined;
+  }
+
   // Fetch adjacent days for navigation
   const [prevDayResult, nextDayResult, assignmentsResult, allDaysResult] = await Promise.all([
     dayNumber > 1
@@ -107,6 +120,7 @@ export default async function MissionDayPage({ params }: PageProps) {
       nextDay={nextDay}
       allDays={allDays}
       currentProgramDay={currentProgramDay}
+      userRole={userRole}
     />
   );
 }

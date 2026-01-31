@@ -18,7 +18,7 @@ const FROM_EMAIL = process.env.EMAIL_FROM || 'AI Academy <notifications@ai-acade
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
 
 // Email types
-export type EmailType = 'review' | 'achievement' | 'deadline_reminder';
+export type EmailType = 'review' | 'achievement' | 'deadline_reminder' | 'intel_drop';
 
 interface SendEmailParams {
   to: string;
@@ -349,6 +349,117 @@ export function getDeadlineReminderEmail(params: {
             <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center;">
               <p style="margin: 0; color: #9ca3af; font-size: 12px;">
                 AI Academy Dashboard
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `,
+  };
+}
+
+export function getIntelDropNotificationEmail(params: {
+  participantName: string;
+  intelTitle: string;
+  intelClassification: 'INFO' | 'ALERT' | 'URGENT' | 'CLASSIFIED';
+  intelPreview?: string;
+  intelUrl?: string;
+}) {
+  const { participantName, intelTitle, intelClassification, intelPreview, intelUrl = `${APP_URL}/intel` } = params;
+
+  const classificationColors: Record<string, { bg: string; text: string; border: string }> = {
+    INFO: { bg: '#dbeafe', text: '#1e40af', border: '#3b82f6' },
+    ALERT: { bg: '#fef3c7', text: '#92400e', border: '#f59e0b' },
+    URGENT: { bg: '#fee2e2', text: '#991b1b', border: '#ef4444' },
+    CLASSIFIED: { bg: '#1f2937', text: '#f3f4f6', border: '#6b7280' },
+  };
+
+  const colors = classificationColors[intelClassification] || classificationColors.INFO;
+
+  return {
+    subject: `[${intelClassification}] New Intel Drop: ${intelTitle}`,
+    html: `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Intel Drop</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #0a0a0a; font-family: 'Courier New', Courier, monospace;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #0a0a0a; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; background-color: #111827; border: 1px solid #374151; border-radius: 4px; overflow: hidden;">
+          <!-- Header -->
+          <tr>
+            <td style="background: linear-gradient(90deg, #0062FF 0%, #1e40af 100%); padding: 20px; text-align: center; border-bottom: 3px solid #3b82f6;">
+              <p style="margin: 0 0 5px; color: #93c5fd; font-size: 12px; text-transform: uppercase; letter-spacing: 2px;">
+                OPERATION AI READY EUROPE
+              </p>
+              <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 600; letter-spacing: 1px;">
+                INTEL DROP
+              </h1>
+            </td>
+          </tr>
+
+          <!-- Classification Banner -->
+          <tr>
+            <td style="background-color: ${colors.bg}; border-left: 4px solid ${colors.border}; padding: 12px 20px;">
+              <p style="margin: 0; color: ${colors.text}; font-size: 12px; font-weight: bold; letter-spacing: 1px;">
+                CLASSIFICATION: ${intelClassification}
+              </p>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 30px;">
+              <p style="margin: 0 0 20px; color: #9ca3af; font-size: 14px;">
+                AGENT <span style="color: #60a5fa;">${participantName}</span>,
+              </p>
+
+              <p style="margin: 0 0 20px; color: #d1d5db; font-size: 14px;">
+                New intelligence has been declassified and is now available in your briefing room.
+              </p>
+
+              <!-- Intel Title Box -->
+              <div style="background-color: #1f2937; border: 1px solid #374151; border-radius: 4px; padding: 20px; margin: 20px 0;">
+                <p style="margin: 0 0 5px; color: #6b7280; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">
+                  SUBJECT
+                </p>
+                <h2 style="margin: 0; color: #f3f4f6; font-size: 18px; font-weight: 600;">
+                  ${intelTitle}
+                </h2>
+                ${intelPreview ? `
+                <p style="margin: 15px 0 0; color: #9ca3af; font-size: 13px; line-height: 1.5;">
+                  ${intelPreview}
+                </p>
+                ` : ''}
+              </div>
+
+              <!-- CTA Button -->
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${intelUrl}" style="display: inline-block; background-color: #0062FF; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-size: 14px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #3b82f6;">
+                  ACCESS INTEL
+                </a>
+              </div>
+
+              <p style="margin: 20px 0 0; color: #6b7280; font-size: 12px; text-align: center;">
+                This message is automatically generated. Do not reply.
+              </p>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td style="background-color: #0a0a0a; padding: 15px 30px; text-align: center; border-top: 1px solid #374151;">
+              <p style="margin: 0; color: #4b5563; font-size: 11px; letter-spacing: 1px;">
+                AI ACADEMY COMMAND CENTER
               </p>
             </td>
           </tr>

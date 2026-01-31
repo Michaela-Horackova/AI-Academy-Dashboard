@@ -53,6 +53,10 @@ import {
   Download,
   Loader2,
   MessageSquare,
+  Zap,
+  Radio,
+  Users,
+  Target,
 } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -74,12 +78,26 @@ const STATUSES: { value: SubmissionStatus; label: string }[] = [
   { value: 'needs_revision', label: 'Needs Revision' },
 ];
 
+// Mission stats type
+interface MissionStats {
+  pendingIntel: number;
+  activeSessions: number;
+  taskForceReadiness: number;
+}
+
 export default function AdminPage() {
   const { participant } = useAuth();
   const [allSubmissions, setAllSubmissions] = useState<SubmissionWithDetails[]>([]);
   const [participants, setParticipants] = useState<{ id: string; name: string; github_username: string; avatar_url: string | null; role: RoleType }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Mission stats
+  const [missionStats, setMissionStats] = useState<MissionStats>({
+    pendingIntel: 0,
+    activeSessions: 0,
+    taskForceReadiness: 0,
+  });
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -102,7 +120,7 @@ export default function AdminPage() {
   const fetchAllSubmissions = async () => {
     const supabase = getSupabaseClient();
 
-    const [submissionsResult, participantsResult] = await Promise.all([
+    const [submissionsResult, participantsResult, intelResult, sessionsResult, taskForcesResult] = await Promise.all([
       supabase
         .from('submissions')
         .select('*, participants(name, github_username, avatar_url, role, team), assignments(title, day, type)')
@@ -111,6 +129,20 @@ export default function AdminPage() {
         .from('participants')
         .select('id, name, github_username, avatar_url, role')
         .order('name'),
+      // Pending intel count
+      supabase
+        .from('intel_drops')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_released', false),
+      // Active sessions count
+      supabase
+        .from('live_sessions')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_active', true),
+      // Task force overall readiness
+      supabase
+        .from('task_forces')
+        .select('overall_readiness'),
     ]);
 
     if (!submissionsResult.error && submissionsResult.data) {
@@ -119,6 +151,18 @@ export default function AdminPage() {
     if (!participantsResult.error && participantsResult.data) {
       setParticipants(participantsResult.data as typeof participants);
     }
+
+    // Calculate mission stats
+    const avgReadiness = taskForcesResult.data
+      ? taskForcesResult.data.reduce((sum, tf) => sum + (tf.overall_readiness || 0), 0) / Math.max(taskForcesResult.data.length, 1)
+      : 0;
+
+    setMissionStats({
+      pendingIntel: intelResult.count || 0,
+      activeSessions: sessionsResult.count || 0,
+      taskForceReadiness: Math.round(avgReadiness),
+    });
+
     setIsLoading(false);
     setIsRefreshing(false);
   };
@@ -329,6 +373,70 @@ export default function AdminPage() {
           Refresh
         </Button>
       </div>
+
+      {/* Mission Control Quick Links */}
+      <Card className="border-blue-500/20 bg-gradient-to-r from-blue-500/5 to-transparent">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Target className="h-5 w-5 text-blue-500" />
+            Mission Control
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-4">
+            {/* Quick Links */}
+            <Link href="/admin/intel">
+              <Card className="hover:border-amber-500/50 transition-colors cursor-pointer h-full">
+                <CardContent className="pt-4 flex flex-col items-center text-center">
+                  <Zap className="h-8 w-8 text-amber-500 mb-2" />
+                  <p className="font-medium">Intel Drops</p>
+                  <p className="text-2xl font-bold text-amber-500">{missionStats.pendingIntel}</p>
+                  <p className="text-xs text-muted-foreground">pending release</p>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Card className="h-full">
+              <CardContent className="pt-4 flex flex-col items-center text-center">
+                <Radio className="h-8 w-8 text-green-500 mb-2" />
+                <p className="font-medium">Live Sessions</p>
+                <p className="text-2xl font-bold text-green-500">{missionStats.activeSessions}</p>
+                <p className="text-xs text-muted-foreground">currently active</p>
+              </CardContent>
+            </Card>
+
+            <Card className="h-full">
+              <CardContent className="pt-4 flex flex-col items-center text-center">
+                <Users className="h-8 w-8 text-blue-500 mb-2" />
+                <p className="font-medium">Task Force Readiness</p>
+                <p className="text-2xl font-bold text-blue-500">{missionStats.taskForceReadiness}%</p>
+                <p className="text-xs text-muted-foreground">overall</p>
+              </CardContent>
+            </Card>
+
+            <div className="flex flex-col gap-2">
+              <Link href="/admin/intel">
+                <Button variant="outline" className="w-full justify-start" size="sm">
+                  <Zap className="mr-2 h-4 w-4 text-amber-500" />
+                  Manage Intel
+                </Button>
+              </Link>
+              <Link href="/live-session">
+                <Button variant="outline" className="w-full justify-start" size="sm">
+                  <Radio className="mr-2 h-4 w-4 text-green-500" />
+                  Start Session
+                </Button>
+              </Link>
+              <Link href="/teams">
+                <Button variant="outline" className="w-full justify-start" size="sm">
+                  <Users className="mr-2 h-4 w-4 text-blue-500" />
+                  Task Forces
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-4">

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { getSupabaseClient } from '@/lib/supabase';
 import {
   Table,
@@ -21,14 +21,23 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Trophy, Medal, Award, Flame } from 'lucide-react';
+import { Trophy, Medal, Award, Flame, TrendingUp, TrendingDown } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import type { LeaderboardView, RoleType, TeamType, StreamType } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 const ROLES: RoleType[] = ['FDE', 'AI-SE', 'AI-PM', 'AI-DA', 'AI-DS', 'AI-SEC', 'AI-FE'];
 const TEAMS: TeamType[] = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta'];
 const STREAMS: StreamType[] = ['Tech', 'Business'];
+
+// Track position changes for animation
+interface PositionChange {
+  username: string;
+  previousRank: number;
+  currentRank: number;
+  timestamp: number;
+}
 
 interface LeaderboardProps {
   initialData: LeaderboardView[];
@@ -41,8 +50,69 @@ export function Leaderboard({ initialData }: LeaderboardProps) {
   const [teamFilter, setTeamFilter] = useState<string>('all');
   const [streamFilter, setStreamFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'points' | 'submissions' | 'rating'>('points');
+  const [positionChanges, setPositionChanges] = useState<Map<string, PositionChange>>(new Map());
+  const previousRanksRef = useRef<Map<string, number>>(new Map());
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Store previous ranks on data change
+  useEffect(() => {
+    const newRanks = new Map<string, number>();
+    data.forEach((entry) => {
+      newRanks.set(entry.github_username, entry.rank);
+    });
+    previousRanksRef.current = newRanks;
+  }, [data]);
+
+  // Merge delta update with existing data
+  const mergeDeltaUpdate = useCallback((
+    existingData: LeaderboardView[],
+    updatedEntry: Partial<LeaderboardView> & { github_username: string }
+  ): LeaderboardView[] => {
+    const dataMap = new Map(existingData.map((e) => [e.github_username, e]));
+    const existing = dataMap.get(updatedEntry.github_username);
+
+    if (existing) {
+      // Merge update with existing entry
+      dataMap.set(updatedEntry.github_username, { ...existing, ...updatedEntry });
+    }
+
+    // Convert back to array and recalculate ranks based on points
+    const updated = Array.from(dataMap.values());
+    updated.sort((a, b) => b.total_points - a.total_points);
+
+    // Recalculate ranks
+    return updated.map((entry, index) => ({
+      ...entry,
+      rank: index + 1,
+    }));
+  }, []);
+
+  // Track position changes for animations
+  const trackPositionChanges = useCallback((newData: LeaderboardView[]) => {
+    const changes = new Map<string, PositionChange>();
+    const now = Date.now();
+
+    newData.forEach((entry) => {
+      const previousRank = previousRanksRef.current.get(entry.github_username);
+      if (previousRank !== undefined && previousRank !== entry.rank) {
+        changes.set(entry.github_username, {
+          username: entry.github_username,
+          previousRank,
+          currentRank: entry.rank,
+          timestamp: now,
+        });
+      }
+    });
+
+    if (changes.size > 0) {
+      setPositionChanges(changes);
+      // Clear animations after 3 seconds
+      setTimeout(() => {
+        setPositionChanges(new Map());
+      }, 3000);
+    }
+  }, []);
 
   // Apply filters and sorting
   useEffect(() => {
@@ -74,32 +144,77 @@ const [isLoading, setIsLoading] = useState(false);
     setFilteredData(filtered);
   }, [data, roleFilter, teamFilter, streamFilter, sortBy]);
 
-  // Subscribe to real-time updates
+  // Subscribe to real-time delta updates
   useEffect(() => {
     const supabase = getSupabaseClient();
 
     const channel = supabase
-      .channel('leaderboard-changes')
+      .channel('leaderboard-delta-updates')
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
           schema: 'public',
           table: 'leaderboard',
         },
-        async () => {
-          // Refetch leaderboard data
-          const { data: newData, error } = await supabase
-            .from('leaderboard_view')
-            .select('*')
-            .order('rank');
+        (payload) => {
+          // Delta update - merge only changed record
+          const updatedRecord = payload.new as LeaderboardView;
 
-          if (!error && newData) {
-            setData(newData as LeaderboardView[]);
-            toast.success('Leaderboard updated!', {
-              description: 'New submission received',
-            });
-          }
+          setData((prevData) => {
+            const newData = mergeDeltaUpdate(prevData, updatedRecord);
+            // Track position changes for animation
+            trackPositionChanges(newData);
+            return newData;
+          });
+
+          toast.success('Score updated!', {
+            description: `${updatedRecord.name || 'A participant'} earned points`,
+            duration: 2000,
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'leaderboard',
+        },
+        (payload) => {
+          // New participant added
+          const newRecord = payload.new as LeaderboardView;
+
+          setData((prevData) => {
+            const exists = prevData.some((e) => e.github_username === newRecord.github_username);
+            if (exists) return prevData;
+
+            const updated = [...prevData, newRecord];
+            updated.sort((a, b) => b.total_points - a.total_points);
+            return updated.map((entry, index) => ({ ...entry, rank: index + 1 }));
+          });
+
+          toast.success('New participant!', {
+            description: `${newRecord.name || 'A new participant'} joined`,
+            duration: 2000,
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'leaderboard',
+        },
+        (payload) => {
+          // Participant removed
+          const deletedRecord = payload.old as { github_username: string };
+
+          setData((prevData) => {
+            const filtered = prevData.filter((e) => e.github_username !== deletedRecord.github_username);
+            return filtered.map((entry, index) => ({ ...entry, rank: index + 1 }));
+          });
         }
       )
       .subscribe();
@@ -107,7 +222,7 @@ const [isLoading, setIsLoading] = useState(false);
     return () => {
       supabase.removeChannel(channel);
     };
-  }, []);
+  }, [mergeDeltaUpdate, trackPositionChanges]);
 
   const getRankIcon = (rank: number) => {
     switch (rank) {
@@ -134,6 +249,35 @@ const [isLoading, setIsLoading] = useState(false);
         return '';
     }
   };
+
+  // Get position change indicator for a participant
+  const getPositionChangeIndicator = (username: string) => {
+    const change = positionChanges.get(username);
+    if (!change) return null;
+
+    const diff = change.previousRank - change.currentRank;
+    if (diff > 0) {
+      // Moved up
+      return (
+        <span className="inline-flex items-center gap-0.5 text-green-500 text-xs font-medium animate-pulse">
+          <TrendingUp className="h-3 w-3" />
+          +{diff}
+        </span>
+      );
+    } else if (diff < 0) {
+      // Moved down
+      return (
+        <span className="inline-flex items-center gap-0.5 text-red-500 text-xs font-medium animate-pulse">
+          <TrendingDown className="h-3 w-3" />
+          {diff}
+        </span>
+      );
+    }
+    return null;
+  };
+
+  // Check if row has animation
+  const hasPositionChange = (username: string) => positionChanges.has(username);
 
   if (isLoading) {
     return (
@@ -240,14 +384,19 @@ const [isLoading, setIsLoading] = useState(false);
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredData.map((entry, index) => (
+              {filteredData.map((entry) => (
                 <TableRow
                   key={entry.github_username}
-                  className={`${getRankBg(entry.rank)} transition-colors`}
+                  className={cn(
+                    getRankBg(entry.rank),
+                    'transition-all duration-500',
+                    hasPositionChange(entry.github_username) && 'animate-pulse bg-blue-500/10'
+                  )}
                 >
                   <TableCell className="font-medium">
-                    <div className="flex items-center justify-center">
+                    <div className="flex items-center justify-center gap-1">
                       {getRankIcon(entry.rank)}
+                      {getPositionChangeIndicator(entry.github_username)}
                     </div>
                   </TableCell>
                   <TableCell>

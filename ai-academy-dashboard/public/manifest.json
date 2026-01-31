@@ -1,0 +1,67 @@
+{
+  "name": "AI Academy - Operation AI Ready Europe",
+  "short_name": "AI Academy",
+  "description": "Your mission dashboard for Operation AI Ready Europe - a 25-day journey to AI mastery",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0062FF",
+  "orientation": "any",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Mission Dashboard"
+    },
+    {
+      "src": "/screenshot-narrow.png",
+      "sizes": "640x1136",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Mobile Mission View"
+    }
+  ],
+  "categories": ["education", "productivity"],
+  "prefer_related_applications": false,
+  "related_applications": [],
+  "shortcuts": [
+    {
+      "name": "Today's Briefing",
+      "short_name": "Briefing",
+      "description": "View today's mission briefing",
+      "url": "/mission",
+      "icons": [{ "src": "/shortcut-briefing.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "Intel Drops",
+      "short_name": "Intel",
+      "description": "Check the latest intel drops",
+      "url": "/intel",
+      "icons": [{ "src": "/shortcut-intel.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "My Progress",
+      "short_name": "Progress",
+      "description": "View your mission progress",
+      "url": "/my-progress",
+      "icons": [{ "src": "/shortcut-progress.png", "sizes": "96x96" }]
+    }
+  ]
+}

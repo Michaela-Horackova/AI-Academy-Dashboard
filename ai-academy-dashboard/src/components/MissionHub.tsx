@@ -33,7 +33,6 @@ import {
 interface MissionHubProps {
   missionDays: MissionDay[];
   taskForces: (TaskForce & { pilot_clients: PilotClient | null })[];
-  pilotClients: PilotClient[];
   intelDrops: IntelDrop[];
   currentProgramDay: number;
   participant: {
