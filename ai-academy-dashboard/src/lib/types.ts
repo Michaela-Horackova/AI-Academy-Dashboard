@@ -18,9 +18,9 @@ export interface Participant {
   name: string;
   nickname: string;  // Display name for collaboration
   email: string;
-  role: RoleType;
-  team: TeamType;
-  stream: StreamType;
+  role: RoleType | null;  // NULL = not yet assigned, user chooses later
+  team: TeamType | null;  // NULL = not yet joined a team
+  stream: StreamType | null;  // NULL = not yet selected
   avatar_url: string | null;
   repo_url: string | null;
   auth_user_id: string | null;  // Link to Supabase auth user

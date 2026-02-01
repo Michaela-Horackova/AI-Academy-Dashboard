@@ -27,26 +27,23 @@ export const sanitizedStringSchema = z.string().transform(sanitizeString);
 // ============================================================================
 
 // These must match the types in types.ts
-const VALID_ROLES = ['FDE', 'AI-SE', 'AI-PM', 'AI-DA', 'AI-DS', 'AI-SEC', 'AI-FE'] as const;
-const VALID_TEAMS = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta'] as const;
-const VALID_STREAMS = ['Tech', 'Business'] as const;
+export const VALID_ROLES = ['FDE', 'AI-SE', 'AI-PM', 'AI-DA', 'AI-DS', 'AI-SEC', 'AI-FE'] as const;
+export const VALID_TEAMS = ['Alpha', 'Beta', 'Gamma', 'Delta', 'Epsilon', 'Zeta', 'Eta', 'Theta'] as const;
+export const VALID_STREAMS = ['Tech', 'Business'] as const;
 
-// Default values for new users (can be changed later from profile)
-export const DEFAULT_ROLE = 'FDE' as const;
-export const DEFAULT_TEAM = 'Alpha' as const;
-export const DEFAULT_STREAM = 'Tech' as const;
-
+// Role, team, stream are NOT auto-assigned during registration
+// Students choose these later from their profile when they're ready
 export const roleSchema = z.enum(VALID_ROLES, {
   message: 'Invalid role type',
-}).optional().default(DEFAULT_ROLE);
+}).optional().nullable();
 
 export const teamSchema = z.enum(VALID_TEAMS, {
   message: 'Invalid team',
-}).optional().default(DEFAULT_TEAM);
+}).optional().nullable();
 
 export const streamSchema = z.enum(VALID_STREAMS, {
   message: 'Invalid stream',
-}).optional().default(DEFAULT_STREAM);
+}).optional().nullable();
 
 // GitHub username schema - optional now
 export const githubUsernameSchema = z
@@ -73,10 +70,10 @@ export const registerSchema = z.object({
     .transform(sanitizeString),
   nickname: nicknameSchema,
   email: emailSchema,
-  // Role, team, stream are optional during registration - users set them later from profile
-  role: roleSchema,  // defaults to 'FDE'
-  team: teamSchema,  // defaults to 'Alpha'
-  stream: streamSchema,  // defaults to 'Tech'
+  // Role, team, stream are NULL during registration - users set them later from profile
+  role: roleSchema,
+  team: teamSchema,
+  stream: streamSchema,
   avatar_url: z.string().url().optional().nullable(),
   auth_user_id: z.string().uuid().optional(),
 });

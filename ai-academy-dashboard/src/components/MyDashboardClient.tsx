@@ -41,6 +41,8 @@ import {
   ArrowUp,
   ArrowDown,
   Minus,
+  UserCog,
+  Info,
 } from 'lucide-react';
 import type {
   Participant,
@@ -311,10 +313,22 @@ export function MyDashboardClient({
                 </Badge>
               </div>
               <p className="text-muted-foreground">@{currentUser.nickname || currentUser.github_username || 'no-username'}</p>
-              <div className="flex items-center gap-2 mt-2">
-                <Badge variant="outline">{currentUser.role}</Badge>
-                <Badge variant="secondary">Team {currentUser.team}</Badge>
-                <Badge>{currentUser.stream}</Badge>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                {currentUser.role ? (
+                  <Badge variant="outline">{currentUser.role}</Badge>
+                ) : (
+                  <Badge variant="outline" className="border-dashed text-muted-foreground">No Role</Badge>
+                )}
+                {currentUser.team ? (
+                  <Badge variant="secondary">Team {currentUser.team}</Badge>
+                ) : (
+                  <Badge variant="secondary" className="border-dashed text-muted-foreground">No Team</Badge>
+                )}
+                {currentUser.stream ? (
+                  <Badge>{currentUser.stream}</Badge>
+                ) : (
+                  <Badge className="border-dashed text-muted-foreground bg-muted">No Stream</Badge>
+                )}
               </div>
             </div>
 
@@ -349,17 +363,56 @@ export function MyDashboardClient({
         </CardContent>
       </Card>
 
+      {/* Setup Prompt - Show when role/team/stream not set */}
+      {(!currentUser.role || !currentUser.team || !currentUser.stream) && (
+        <Card className="border-[#0062FF]/50 bg-[#0062FF]/5">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0062FF]/10">
+                <UserCog className="h-5 w-5 text-[#0062FF]" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold">Complete Your Profile Setup</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Set your role, team, and learning stream to get personalized content and join team activities.
+                </p>
+                <Link href="/profile">
+                  <Button size="sm" className="mt-3 bg-[#0062FF] hover:bg-[#0052D9]">
+                    <UserCog className="mr-2 h-4 w-4" />
+                    Setup Now
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column - Submissions & Missing */}
+        {/* Left Column - Submissions & Assignments */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Missing Assignments */}
-          {missingAssignments.length > 0 && (
+          {/* Assignments to Complete */}
+          {assignments.length === 0 ? (
+            <Card className="border-[#0062FF]/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <Info className="h-8 w-8 text-[#0062FF]" />
+                  <div>
+                    <p className="font-bold">Welcome to AI Academy!</p>
+                    <p className="text-sm text-muted-foreground">
+                      Assignments will appear here as they become available. Check back on the program start date.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ) : missingAssignments.length > 0 ? (
             <Card className="border-amber-500/50">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
-                  <AlertCircle className="h-5 w-5" />
-                  Missing Assignments ({missingAssignments.length})
+                  <Target className="h-5 w-5" />
+                  Assignments to Complete ({missingAssignments.length})
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -423,10 +476,10 @@ export function MyDashboardClient({
                 </div>
               </CardContent>
             </Card>
-          )}
+          ) : null}
 
-          {/* Completed check */}
-          {missingAssignments.length === 0 && (
+          {/* Completed check - only show if there are assignments available */}
+          {assignments.length > 0 && missingAssignments.length === 0 && (
             <Card className="border-green-500/50 bg-green-500/10">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-3">
@@ -537,41 +590,59 @@ export function MyDashboardClient({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Team Comparison */}
-              <div>
-                <p className="text-sm font-medium text-muted-foreground mb-2">
-                  vs. Team {currentUser.team}
-                </p>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Points</span>
-                    <div className="flex items-center gap-2">
-                      {getComparisonIcon(
-                        userLeaderboard.total_points,
-                        teamAvgPoints
-                      )}
-                      <span className="font-medium">
-                        {userLeaderboard.total_points} / {teamAvgPoints} avg
-                      </span>
+              {/* Team Comparison - only show if user has a team */}
+              {currentUser.team ? (
+                <>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground mb-2">
+                      vs. Team {currentUser.team}
+                    </p>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Points</span>
+                        <div className="flex items-center gap-2">
+                          {getComparisonIcon(
+                            userLeaderboard.total_points,
+                            teamAvgPoints
+                          )}
+                          <span className="font-medium">
+                            {userLeaderboard.total_points} / {teamAvgPoints} avg
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">Submissions</span>
+                        <div className="flex items-center gap-2">
+                          {getComparisonIcon(
+                            userLeaderboard.total_submissions,
+                            teamAvgSubmissions
+                          )}
+                          <span className="font-medium">
+                            {userLeaderboard.total_submissions} / {teamAvgSubmissions}{' '}
+                            avg
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm">Submissions</span>
-                    <div className="flex items-center gap-2">
-                      {getComparisonIcon(
-                        userLeaderboard.total_submissions,
-                        teamAvgSubmissions
-                      )}
-                      <span className="font-medium">
-                        {userLeaderboard.total_submissions} / {teamAvgSubmissions}{' '}
-                        avg
-                      </span>
-                    </div>
+                  <Separator />
+                </>
+              ) : (
+                <>
+                  <div className="text-center py-2">
+                    <Users className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      Join a team to see team comparisons
+                    </p>
+                    <Link href="/profile">
+                      <Button variant="outline" size="sm" className="mt-2">
+                        Select Team
+                      </Button>
+                    </Link>
                   </div>
-                </div>
-              </div>
-
-              <Separator />
+                  <Separator />
+                </>
+              )}
 
               {/* Overall Comparison */}
               <div>
@@ -613,8 +684,8 @@ export function MyDashboardClient({
                 </div>
               </div>
 
-              {/* Team Rank */}
-              {userTeamProgress && (
+              {/* Team Rank - only show if user has a team */}
+              {currentUser.team && userTeamProgress && (
                 <>
                   <Separator />
                   <div className="flex items-center justify-between">

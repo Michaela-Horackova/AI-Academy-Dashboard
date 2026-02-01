@@ -77,15 +77,15 @@ export async function POST(request: NextRequest) {
       avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(initials)}&background=random&size=200`;
     }
 
-    // Build insert object - only include fields that exist in current schema
-    // nickname and auth_user_id may not exist if migration hasn't been run
+    // Build insert object
+    // Role, team, stream are NULL during registration - users set them later from profile
     const insertData: Record<string, unknown> = {
       github_username: github_username || null,
       name,
       email,
-      role,
-      team,
-      stream,
+      role: role || null,  // NULL = not yet assigned
+      team: team || null,  // NULL = not yet joined a team
+      stream: stream || null,  // NULL = not yet selected
       avatar_url: avatarUrl,
       repo_url: github_username ? `https://github.com/${github_username}/ai-academy-2026` : null,
       status: 'approved',  // Immediate access - no admin approval needed
@@ -137,8 +137,8 @@ export async function POST(request: NextRequest) {
       participantId: participant.id,
       nickname,
       email,
-      role,
-      team,
+      role: role || 'unassigned',
+      team: team || 'unassigned',
       hasGitHub: !!github_username,
     });
 

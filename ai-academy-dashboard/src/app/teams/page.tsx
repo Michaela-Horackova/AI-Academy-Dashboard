@@ -27,6 +27,8 @@ export default async function TeamsPage() {
   TEAMS.forEach((team) => participantsByTeam.set(team, []));
   
   (participants as Participant[] ?? []).forEach((p) => {
+    // Skip participants without a team assigned
+    if (!p.team) return;
     const teamMembers = participantsByTeam.get(p.team) ?? [];
     teamMembers.push(p);
     participantsByTeam.set(p.team, teamMembers);

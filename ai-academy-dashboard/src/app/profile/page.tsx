@@ -83,9 +83,9 @@ export default function ProfilePage() {
   useEffect(() => {
     if (participant) {
       setAssignmentData({
-        role: participant.role,
-        team: participant.team,
-        stream: participant.stream,
+        role: participant.role || '',
+        team: participant.team || '',
+        stream: participant.stream || '',
       });
     }
   }, [participant]);
@@ -237,14 +237,22 @@ export default function ProfilePage() {
                 <Mail className="h-4 w-4 text-muted-foreground" />
                 <span>{participant.email}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 text-sm flex-wrap">
                 <Briefcase className="h-4 w-4 text-muted-foreground" />
-                <span>{participant.role}</span>
-                <Badge variant="outline">{participant.stream}</Badge>
+                <span>{participant.role || <span className="text-muted-foreground italic">No role</span>}</span>
+                {participant.stream ? (
+                  <Badge variant="outline">{participant.stream}</Badge>
+                ) : (
+                  <Badge variant="outline" className="border-dashed text-muted-foreground">No stream</Badge>
+                )}
               </div>
               <div className="flex items-center gap-2 text-sm">
                 <Users className="h-4 w-4 text-muted-foreground" />
-                <span>Team {participant.team}</span>
+                {participant.team ? (
+                  <span>Team {participant.team}</span>
+                ) : (
+                  <span className="text-muted-foreground italic">No team assigned</span>
+                )}
               </div>
             </div>
           </CardContent>
