@@ -47,7 +47,7 @@ export default async function ParticipantPage({ params }: ParticipantPageProps) 
 
   // Fetch participant
   const { data: participant, error } = await supabase
-    .from('participants')
+    .from('remote participants')
     .select('*')
     .eq('github_username', username)
     .single();
@@ -257,8 +257,8 @@ export default async function ParticipantPage({ params }: ParticipantPageProps) 
                             sub.status === 'approved'
                               ? 'default'
                               : sub.status === 'submitted'
-                              ? 'secondary'
-                              : 'destructive'
+                                ? 'secondary'
+                                : 'destructive'
                           }
                         >
                           {sub.status}
