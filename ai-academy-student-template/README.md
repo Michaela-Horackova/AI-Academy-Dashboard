@@ -6,10 +6,10 @@
 
 | | |
 |---|---|
-| **Name** | [Your name] |
-| **Role** | [FDE / AI-SE / AI-PM / AI-DA / AI-DS / AI-SEC / AI-FE] |
-| **Team** | [Alpha / Beta / Gamma / Delta / Epsilon / Zeta / Eta / Theta] |
-| **Stream** | [Tech / Business] |
+| **Name** | Michaela Horackova|
+| **Role** | AI-DA |
+| **Team** | Eta / Theta |
+| **Stream** | Tech  |
 
 ## Repository Structure
 
