@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { ClerkProvider } from "@clerk/nextjs";
 import { Navigation } from "@/components/Navigation";
 import { MobileBottomNav } from "@/components/MobileBottomNav";
 import { AuthProvider } from "@/components/AuthProvider";
@@ -38,21 +39,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="dark">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background`}
-      >
-        <AuthProvider>
-          <AuthGuard>
-            <Navigation />
-            <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 pb-20 lg:pb-6">
-              {children}
-            </main>
-            <MobileBottomNav />
-            <Toaster />
-          </AuthGuard>
-        </AuthProvider>
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" className="dark">
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background`}
+        >
+          <AuthProvider>
+            <AuthGuard>
+              <Navigation />
+              <main className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 pb-20 lg:pb-6">
+                {children}
+              </main>
+              <MobileBottomNav />
+              <Toaster />
+            </AuthGuard>
+          </AuthProvider>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
